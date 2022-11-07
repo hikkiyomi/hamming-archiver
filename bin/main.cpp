@@ -7,6 +7,7 @@
 int main() {
     Archiver driver("test_archive");
     driver.Create();
+    driver.Append("test.txt");
 
     return 0;
 }
