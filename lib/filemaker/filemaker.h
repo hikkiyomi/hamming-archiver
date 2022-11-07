@@ -6,7 +6,7 @@
 
 class File {
 public:
-    File(const char* file_path);
+    File(const char*);
 
     void Show(); // FOR DEBUGGING
     std::filesystem::path GetPath();
