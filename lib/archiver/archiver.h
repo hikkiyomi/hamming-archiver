@@ -6,6 +6,8 @@ class Archiver {
 public:
     void Create();
     void Append(std::filesystem::path);
+    void Extract();
+    void ShowData();
 
     Archiver(std::filesystem::path);
 private:

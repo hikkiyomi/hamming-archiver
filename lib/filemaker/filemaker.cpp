@@ -2,6 +2,8 @@
 
 #include <iostream>
 
+HAFInfo::HAFInfo() {}
+
 HAFInfo::HAFInfo(size_t _file_name_length, const std::string& _file_name, uint64_t _file_size) 
     : file_name_length(_file_name_length)
     , file_name(_file_name)

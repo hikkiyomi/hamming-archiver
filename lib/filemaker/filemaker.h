@@ -9,6 +9,7 @@ struct HAFInfo {
     std::string file_name;
     uint64_t file_size;
 
+    HAFInfo();
     HAFInfo(size_t, const std::string&, uint64_t);
 };
 
