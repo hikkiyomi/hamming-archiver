@@ -5,6 +5,8 @@
 #include <fstream>
 #include <iostream>
 
+const uint64_t kFileSizeLimit = 1'073'741'824; // 1 GB
+
 Archiver::Archiver(std::filesystem::path _archive_path) 
     : archive_path(_archive_path)
 {
@@ -48,12 +50,19 @@ void Archiver::Append(std::filesystem::path file_path) {
     File appending_file(file_path);
 
     if (std::filesystem::is_directory(file_path)) {
-        std::cout << file_path << " is a directory. Archiving directories is not supported." << std::endl;
+        std::cout << file_path << " is a directory. Archiving directories is not supported (yet)." << std::endl;
 
         return;
     }
 
     HAFInfo info_header = appending_file.ExportIntoHAF();
+
+    if (info_header.file_size > kFileSizeLimit) {
+        std::cout << "The size of the file " << info_header.file_name << " exceeds 1 GB. ";
+        std::cout << "File cannot be archived." << std::endl;
+
+        return;
+    }
 
     std::ofstream stream(archive_path, std::ios::binary | std::ios::app);
 
@@ -110,6 +119,60 @@ void Archiver::Extract() {
     }
 }
 
-void Archiver::ShowData() {
+std::string BeautifySize(uint64_t file_size) {
+    const uint16_t kOneStep = 1024;
+    size_t power = 0;
+
+    while (file_size >= kOneStep) {
+        file_size /= kOneStep;
+        ++power;
+    }
+
+    std::string result = std::to_string(file_size) + " ";
     
+    if (power == 1) {
+        result += "K";
+    } else if (power == 2) {
+        result += "M";
+    } else if (power == 3) {
+        result += "G";
+    }
+
+    result += "B";
+
+    return result;
+}
+
+void PrintFileData(const HAFInfo& header) {
+    std::cout << header.file_name << " " << BeautifySize(header.file_size) << std::endl;
+}
+
+void Archiver::ShowData() {
+    std::cout << "Archive " << archive_path << " contains:" << std::endl;
+
+    std::ifstream stream(archive_path, std::ios::binary);
+    uint32_t file_count = 0;
+    uint64_t archive_size = 0;
+
+    while (stream.peek() != EOF) {
+        HAFInfo current_file;
+
+        ReadFileInformation(stream, current_file);
+        PrintFileData(current_file);
+
+        ++file_count;
+        archive_size += current_file.file_size;
+
+        stream.seekg(current_file.file_size, std::ios::cur);
+    }
+
+    if (file_count == 0) {
+        std::cout << "Nothing." << std::endl;
+
+        return;
+    }
+
+    std::cout << std::endl;
+    std::cout << "Amount of files: " << file_count << std::endl;
+    std::cout << "Size archived: " << BeautifySize(archive_size) << std::endl;
 }
