@@ -20,7 +20,7 @@ HAFInfo File::ExportIntoHAF() {
     );
 }
 
-File::File(std::filesystem::path _file_path)
+File::File(const std::filesystem::path& _file_path)
     : file_path(_file_path)
 {}
 

@@ -17,7 +17,7 @@ class File {
 public:
     HAFInfo ExportIntoHAF();
 
-    File(std::filesystem::path);
+    File(const std::filesystem::path&);
 
     void Show(); // FOR DEBUGGING
     std::filesystem::path GetAbsolutePath();
