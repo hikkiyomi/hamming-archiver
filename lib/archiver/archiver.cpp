@@ -7,17 +7,33 @@
 
 const uint64_t kFileSizeLimit = 1'073'741'824; // 1 GB
 
+void NormalizeArchivePath(std::filesystem::path&);
 char GetUserInput();
 void WriteFileInfo(std::ofstream&, const HAFInfo&);
 bool CheckOnAvailability(const std::string&);
 void ReadFileInfo(std::ifstream&, HAFInfo&);
 std::string BeautifySize(uint64_t);
 void PrintFileData(const HAFInfo&);
+void WriteArchive(std::ofstream&, const std::filesystem::path&);
+
+void NormalizeArchivePath(std::filesystem::path& archive_path) {
+    if (!archive_path.has_extension()) {
+        archive_path += ".haf";
+
+        return;
+    }
+
+    if (archive_path.extension().string() != "haf") {
+        std::cerr << archive_path.filename() << " is not an archive." << std::endl;
+
+        exit(1);
+    }
+}
 
 Archiver::Archiver(const std::filesystem::path& _archive_path) 
     : archive_path(_archive_path)
 {
-    archive_path += ".haf";
+    NormalizeArchivePath(archive_path);
 }
 
 char GetUserInput() {
@@ -252,6 +268,45 @@ void Archiver::Delete(const std::unordered_set<std::string>& files) {
     std::filesystem::rename(new_archive, archive_path);
 }
 
-void Archiver::Merge() {
+void WriteArchive(std::ofstream& output_stream, const std::filesystem::path& archive_path) {
+    std::ifstream input_stream(archive_path, std::ios::binary);
+
+    for (char byte; input_stream.get(byte);) {
+        output_stream.write(static_cast<const char*>(&byte), sizeof(byte));
+    }
+}
+
+void Merge(std::filesystem::path& archive_1, std::filesystem::path& archive_2, std::filesystem::path& merge_path) {
+    NormalizeArchivePath(archive_1);
+    NormalizeArchivePath(archive_2);
     
+    if (merge_path.empty()) {
+        uint64_t size_1 = std::filesystem::file_size(archive_1);
+        uint64_t size_2 = std::filesystem::file_size(archive_2);
+
+        if (size_1 < size_2) {
+            std::cout << "Concatenating into " << archive_2.filename() << "..." << std::endl;
+            swap(archive_1, archive_2);
+        } else {
+            std::cout << "Concatenating into " << archive_1.filename() << "..." << std::endl;
+        }
+
+        std::ofstream output_stream(archive_1, std::ios::binary | std::ios::app);
+        std::ifstream input_stream(archive_2, std::ios::binary);
+
+        for (char byte; input_stream.get(byte);) {
+            output_stream.write(static_cast<const char*>(&byte), sizeof(byte));
+        }
+
+        return;
+    }
+
+    NormalizeArchivePath(merge_path);
+    
+    std::cout << "Concatenating into " << merge_path.filename() << "..." << std::endl;
+
+    std::ofstream output_stream(merge_path, std::ios::binary | std::ios::app);
+
+    WriteArchive(output_stream, archive_1);
+    WriteArchive(output_stream, archive_2);
 }
