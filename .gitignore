@@ -34,3 +34,6 @@
 # Folders
 build/
 .vscode/
+
+# Specific files
+draft.txt

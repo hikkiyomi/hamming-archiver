@@ -10,13 +10,14 @@ int main() {
     // driver.Create();
     // driver.Append("test.txt");
 
-    std::filesystem::path archive_1 = "archive";
-    std::filesystem::path archive_2 = "new_archive";
-    std::filesystem::path merge_path = "merged";
+    // std::filesystem::path archive_1 = "archive";
+    // std::filesystem::path archive_2 = "new_archive";
+    // std::filesystem::path merge_path = "merged";
 
-    Merge(archive_1, archive_2, merge_path); // ! FIX COLLISIONS
+    // Merge(archive_1, archive_2, merge_path);
 
-    driver.ShowData();
+    // driver.ShowData();
+    driver.Extract({"test (1).txt"});
 
     return 0;
 }

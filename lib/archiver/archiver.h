@@ -7,7 +7,7 @@ class Archiver {
 public:
     void Create();
     void Append(const std::filesystem::path&);
-    void Extract();
+    void Extract(const std::unordered_set<std::string>& files = {});
     void ShowData();
     void Delete(const std::unordered_set<std::string>&);
 
