@@ -10,14 +10,14 @@ struct HAFInfo {
     uint64_t file_size;
 
     HAFInfo();
-    HAFInfo(size_t, const std::string&, uint64_t);
+    HAFInfo(size_t _file_name_length, const std::string& _file_name, uint64_t _file_size);
 };
 
 class File {
 public:
     HAFInfo ExportIntoHAF();
 
-    File(const std::filesystem::path&);
+    File(const std::filesystem::path& _file_path);
 
     void Show(); // FOR DEBUGGING
     std::filesystem::path GetAbsolutePath();

@@ -1,23 +1,18 @@
 #include "lib/archiver/archiver.h"
-#include "lib/filemaker/filemaker.h"
 
 #include <fstream>
 #include <iostream>
 
 int main() {
     Archiver driver("merged");
-    
-    // driver.Create();
-    // driver.Append("test.txt");
 
-    // std::filesystem::path archive_1 = "archive";
-    // std::filesystem::path archive_2 = "new_archive";
-    // std::filesystem::path merge_path = "merged";
+    // std::filesystem::path archive1("archive");
+    // std::filesystem::path archive2("new_archive");
 
-    // Merge(archive_1, archive_2, merge_path);
+    // driver.Merge(archive1, archive2);
 
     // driver.ShowData();
-    driver.Extract({"test (1).txt"});
+    driver.Extract();
 
     return 0;
 }

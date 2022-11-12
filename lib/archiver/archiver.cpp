@@ -1,22 +1,17 @@
 #include "archiver.h"
-#include "../filemaker/filemaker.h"
 
 #include <cassert>
 #include <fstream>
 #include <iostream>
 
 const uint64_t kFileSizeLimit = 1'073'741'824; // 1 GB
+const uint8_t kHammingByte = 2;
 
-void NormalizeArchivePath(std::filesystem::path&);
-char GetUserInput();
-void WriteFileInfo(std::ofstream&, const HAFInfo&);
-bool CheckOnAvailability(const std::filesystem::path&, const std::string&);
-void ReadFileInfo(std::ifstream&, HAFInfo&);
-std::string MakeName(const std::filesystem::path&, uint32_t);
-void MakeCopy(std::string&);
-std::string BeautifySize(uint64_t);
-void PrintFileData(const HAFInfo&);
-void WriteArchive(std::ofstream&, const std::filesystem::path&);
+void NormalizeArchivePath(std::filesystem::path& archive_path);
+std::string MakeName(const std::filesystem::path& path, uint32_t copy_number);
+void MakeCopy(std::string& file_name);
+std::string BeautifySize(uint64_t file_size);
+void PrintFileData(const HAFInfo& header);
 
 void NormalizeArchivePath(std::filesystem::path& archive_path) {
     if (!archive_path.has_extension()) {
@@ -25,31 +20,19 @@ void NormalizeArchivePath(std::filesystem::path& archive_path) {
         return;
     }
 
-    if (archive_path.extension().string() != "haf") {
+    if (archive_path.extension().string() != ".haf") {
         std::cerr << archive_path.filename() << " is not an archive." << std::endl;
 
         exit(1);
     }
 }
 
-Archiver::Archiver(const std::filesystem::path& _archive_path) 
+Archiver::Archiver(const std::filesystem::path& _archive_path, bool _restore) 
     : archive_path(_archive_path)
+    , manipulator(Manipulator())
+    , restore(_restore)
 {
     NormalizeArchivePath(archive_path);
-}
-
-char GetUserInput() {
-    char answer;
-        
-    do {
-        std::cin >> answer;
-
-        if (answer != 'y' && answer != 'n') {
-            std::cout << "Please, use 'y' or 'n'. ";
-        }
-    } while (answer != 'y' && answer != 'n');
-
-    return answer;
 }
 
 void Archiver::Create() {
@@ -65,14 +48,14 @@ void Archiver::Create() {
     std::ofstream{archive_path};
 }
 
-void WriteFileInfo(std::ofstream& stream, const HAFInfo& header) {
-    stream.write(reinterpret_cast<const char*>(&header.file_name_length), sizeof(header.file_name_length));
-    stream.write(static_cast<const char*>(header.file_name.data()), header.file_name_length);
-    stream.write(reinterpret_cast<const char*>(&header.file_size), sizeof(header.file_size));
+void Archiver::WriteFileInfo(std::ofstream& stream, const HAFInfo& header) {
+    manipulator.LoadData(stream, reinterpret_cast<const char*>(&header.file_name_length), sizeof(header.file_name_length));
+    manipulator.LoadData(stream, static_cast<const char*>(header.file_name.data()), header.file_name_length);
+    manipulator.LoadData(stream, reinterpret_cast<const char*>(&header.file_size), sizeof(header.file_size));
 }
 
-bool CheckOnAvailability(const std::filesystem::path& archive_path, const std::string& file_name) {
-    std::ifstream stream(archive_path, std::ios::binary);
+bool Archiver::CheckOnAvailability(const std::filesystem::path& path, const std::string& file_name) {
+    std::ifstream stream(path, std::ios::binary);
 
     while (stream.peek() != EOF) {
         HAFInfo current_file;
@@ -83,7 +66,7 @@ bool CheckOnAvailability(const std::filesystem::path& archive_path, const std::s
             return false;
         }
 
-        stream.seekg(current_file.file_size, std::ios::cur);
+        stream.seekg(kHammingByte * current_file.file_size, std::ios::cur);
     }
 
     return true;
@@ -92,8 +75,14 @@ bool CheckOnAvailability(const std::filesystem::path& archive_path, const std::s
 void Archiver::Append(const std::filesystem::path& file_path) {
     File appending_file(file_path);
 
+    if (!std::filesystem::exists(file_path)) {
+        std::cerr << file_path.filename() << " does not exist." << std::endl;
+
+        exit(1);
+    }
+
     if (std::filesystem::is_directory(file_path)) {
-        std::cerr << file_path << " is a directory. Archiving directories is not supported (yet)." << std::endl;
+        std::cerr << file_path.filename() << " is a directory. Archiving directories is not supported (yet)." << std::endl;
 
         exit(1);
     }
@@ -122,27 +111,24 @@ void Archiver::Append(const std::filesystem::path& file_path) {
 
     WriteFileInfo(stream, info_header);
 
-    uint64_t bytes_count = 0; // ! REMOVE THIS ON RELEASE
     std::ifstream file_stream(file_path, std::ios::binary);
 
-    for (char byte; file_stream.get(byte); ++bytes_count) {
-        stream.write(static_cast<const char*>(&byte), sizeof(byte));
+    for (char byte; file_stream.get(byte);) {
+        manipulator.LoadData(stream, static_cast<const char*>(&byte), sizeof(byte));
     }
-
-    assert(bytes_count == info_header.file_size);
 }
 
-void ReadFileInfo(std::ifstream& stream, HAFInfo& header) {
-    stream.read(reinterpret_cast<char*>(&header.file_name_length), sizeof(header.file_name_length));
+void Archiver::ReadFileInfo(std::ifstream& stream, HAFInfo& header) {
+    manipulator.UnloadData(stream, reinterpret_cast<char*>(&header.file_name_length), sizeof(header.file_name_length), restore);
 
     char buffer[header.file_name_length + 1];
 
-    stream.read(buffer, header.file_name_length);
+    manipulator.UnloadData(stream, buffer, header.file_name_length, restore);
 
     buffer[header.file_name_length] = '\0';
     header.file_name = std::string(buffer);
 
-    stream.read(reinterpret_cast<char*>(&header.file_size), sizeof(header.file_size));
+    manipulator.UnloadData(stream, reinterpret_cast<char*>(&header.file_size), sizeof(header.file_size), restore);
 }
 
 std::string MakeName(const std::filesystem::path& path, uint32_t copy_number) {
@@ -171,7 +157,7 @@ void Archiver::Extract(const std::unordered_set<std::string>& files) {
         ReadFileInfo(input_stream, current_file);
 
         if (!files.empty() && files.find(current_file.file_name) == files.end()) {
-            input_stream.seekg(current_file.file_size, std::ios::cur);
+            input_stream.seekg(kHammingByte * current_file.file_size, std::ios::cur);
 
             continue;
         }
@@ -197,8 +183,8 @@ void Archiver::Extract(const std::unordered_set<std::string>& files) {
         for (size_t i = 0; i < current_file.file_size; ++i) {
             char byte;
 
-            input_stream.read(reinterpret_cast<char*>(&byte), sizeof(byte));
-            output_stream.write(reinterpret_cast<const char*>(&byte), sizeof(byte));
+            manipulator.UnloadData(input_stream, reinterpret_cast<char*>(&byte), sizeof(byte), restore);
+            output_stream.write(static_cast<const char*>(&byte), sizeof(byte));
         }
     }
 }
@@ -247,7 +233,7 @@ void Archiver::ShowData() {
         ++file_count;
         archive_size += current_file.file_size;
 
-        input_stream.seekg(current_file.file_size, std::ios::cur);
+        input_stream.seekg(kHammingByte * current_file.file_size, std::ios::cur);
     }
 
     if (file_count == 0) {
@@ -278,7 +264,7 @@ void Archiver::Delete(const std::unordered_set<std::string>& files) {
         ReadFileInfo(input_stream, current_file);
 
         if (files.find(current_file.file_name) != files.end()) {
-            input_stream.seekg(current_file.file_size, std::ios::cur);
+            input_stream.seekg(kHammingByte * current_file.file_size, std::ios::cur);
 
             continue;
         }
@@ -286,10 +272,10 @@ void Archiver::Delete(const std::unordered_set<std::string>& files) {
         WriteFileInfo(output_stream, current_file);
 
         for (size_t bytes_read = 0; bytes_read < current_file.file_size; ++bytes_read) {
-            char c;
+            char byte;
 
-            input_stream.get(c);
-            output_stream.write(static_cast<const char*>(&c), sizeof(c));
+            manipulator.UnloadData(input_stream, static_cast<char*>(&byte), sizeof(byte), restore);
+            manipulator.LoadData(output_stream, static_cast<const char*>(&byte), sizeof(byte));
         }
     }
 
@@ -300,12 +286,8 @@ void Archiver::Delete(const std::unordered_set<std::string>& files) {
     std::filesystem::rename(new_archive, archive_path);
 }
 
-void WriteArchive(std::ofstream& output_stream, const std::filesystem::path& archive_path, std::unordered_set<std::string>& merged_files) {
-    std::ifstream input_stream(archive_path, std::ios::binary);
-
-    // for (char byte; input_stream.get(byte);) {
-    //     output_stream.write(static_cast<const char*>(&byte), sizeof(byte));
-    // }
+void Archiver::WriteArchive(std::ofstream& output_stream, const std::filesystem::path& path, std::unordered_set<std::string>& merged_files) {
+    std::ifstream input_stream(path, std::ios::binary);
 
     HAFInfo appending_file;
 
@@ -331,26 +313,26 @@ void WriteArchive(std::ofstream& output_stream, const std::filesystem::path& arc
     WriteFileInfo(output_stream, appending_file);
 
     for (size_t bytes_read = 0; bytes_read < appending_file.file_size; ++bytes_read) {
-        char c;
+        char byte;
 
-        input_stream.get(c);
-        output_stream.put(c);
+        manipulator.UnloadData(input_stream, static_cast<char*>(&byte), sizeof(byte), restore);
+        manipulator.LoadData(output_stream, static_cast<const char*>(&byte), sizeof(byte));
     }
 }
 
-void Merge(std::filesystem::path& archive_1, std::filesystem::path& archive_2, std::filesystem::path& merge_path) {
+void Archiver::Merge(std::filesystem::path& archive_1, std::filesystem::path& archive_2) {
     NormalizeArchivePath(archive_1);
     NormalizeArchivePath(archive_2);
     
-    if (merge_path.empty()) {
+    if (archive_path.empty()) {
         std::cerr << "No merge archive provided. Merging was not done." << std::endl;
 
         exit(1);
     }
 
-    NormalizeArchivePath(merge_path);
+    NormalizeArchivePath(archive_path);
 
-    std::ofstream output_stream(merge_path, std::ios::binary | std::ios::app);
+    std::ofstream output_stream(archive_path, std::ios::binary | std::ios::app);
     std::unordered_set<std::string> merged_files;
 
     WriteArchive(output_stream, archive_1, merged_files);
