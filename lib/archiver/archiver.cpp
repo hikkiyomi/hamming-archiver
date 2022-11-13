@@ -132,7 +132,7 @@ void Archiver::ReadFileInfo(std::ifstream& stream, HAFInfo& header) {
 }
 
 std::string MakeName(const std::filesystem::path& path, uint32_t copy_number) {
-    return path.stem().string() + "(" + std::to_string(copy_number) + ")" + path.extension().string();
+    return path.stem().string() + "_" + std::to_string(copy_number) + path.extension().string();
 }
 
 void MakeCopy(std::string& file_name) {
@@ -289,34 +289,36 @@ void Archiver::Delete(const std::unordered_set<std::string>& files) {
 void Archiver::WriteArchive(std::ofstream& output_stream, const std::filesystem::path& path, std::unordered_set<std::string>& merged_files) {
     std::ifstream input_stream(path, std::ios::binary);
 
-    HAFInfo appending_file;
+    while (input_stream.peek() != EOF) {
+        HAFInfo appending_file;
 
-    ReadFileInfo(input_stream, appending_file);
+        ReadFileInfo(input_stream, appending_file);
 
-    if (merged_files.find(appending_file.file_name) != merged_files.end()) {
-        std::filesystem::path temp_path(appending_file.file_name);
+        if (merged_files.find(appending_file.file_name) != merged_files.end()) {
+            std::filesystem::path temp_path(appending_file.file_name);
 
-        for (uint32_t copy_number = 1;; ++copy_number) {
-            std::string temp_file_name = MakeName(temp_path, copy_number);
+            for (uint32_t copy_number = 1;; ++copy_number) {
+                std::string temp_file_name = MakeName(temp_path, copy_number);
 
-            if (merged_files.find(temp_file_name) == merged_files.end()) {
-                appending_file.file_name = temp_file_name;
-                appending_file.file_name_length = temp_file_name.size();
-                
-                break;
+                if (merged_files.find(temp_file_name) == merged_files.end()) {
+                    appending_file.file_name = temp_file_name;
+                    appending_file.file_name_length = temp_file_name.size();
+                    
+                    break;
+                }
             }
         }
-    }
 
-    merged_files.insert(appending_file.file_name);
+        merged_files.insert(appending_file.file_name);
 
-    WriteFileInfo(output_stream, appending_file);
+        WriteFileInfo(output_stream, appending_file);
 
-    for (size_t bytes_read = 0; bytes_read < appending_file.file_size; ++bytes_read) {
-        char byte;
+        for (size_t bytes_read = 0; bytes_read < appending_file.file_size; ++bytes_read) {
+            char byte;
 
-        manipulator.UnloadData(input_stream, static_cast<char*>(&byte), sizeof(byte), restore);
-        manipulator.LoadData(output_stream, static_cast<const char*>(&byte), sizeof(byte));
+            manipulator.UnloadData(input_stream, static_cast<char*>(&byte), sizeof(byte), restore);
+            manipulator.LoadData(output_stream, static_cast<const char*>(&byte), sizeof(byte));
+        }
     }
 }
 
