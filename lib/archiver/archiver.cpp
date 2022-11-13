@@ -132,7 +132,7 @@ void Archiver::ReadFileInfo(std::ifstream& stream, HAFInfo& header) {
 }
 
 std::string MakeName(const std::filesystem::path& path, uint32_t copy_number) {
-    return path.stem().string() + " (" + std::to_string(copy_number) + ")" + path.extension().string();
+    return path.stem().string() + "(" + std::to_string(copy_number) + ")" + path.extension().string();
 }
 
 void MakeCopy(std::string& file_name) {
