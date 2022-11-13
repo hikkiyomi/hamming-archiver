@@ -8,7 +8,7 @@
 
 class Archiver {
 public:
-    Archiver(const std::filesystem::path& _archive_path, bool _restore = false);
+    Archiver(const std::filesystem::path& _archive_path, bool _restore = true);
 
     void Create();
     void Append(const std::filesystem::path& file_path);

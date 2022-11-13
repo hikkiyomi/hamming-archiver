@@ -3,16 +3,26 @@
 #include <fstream>
 #include <iostream>
 
-int main() {
-    Archiver driver("merged");
+void Damage() {
+    std::vector<uint8_t> bytes;
+    std::ifstream input_stream("archive.haf", std::ios::binary);
 
-    // std::filesystem::path archive1("archive");
-    // std::filesystem::path archive2("new_archive");
+    for (char byte; input_stream.get(byte);) {
+        bytes.push_back(byte);
+    }
 
-    // driver.Merge(archive1, archive2);
+    // bytes[bytes.size() - 2] = 86; // Data is damaged but it can be restored.
+    // bytes[bytes.size() - 2] = 87; // Data is damaged and cannot be restored.
 
-    // driver.ShowData();
-    driver.Extract();
+    std::ofstream output_stream("archive.haf", std::ios::binary);
+
+    for (char byte: bytes) {
+        output_stream.put(byte);
+    }
+}
+
+int main(int argc, char** argv) {
+    
 
     return 0;
 }

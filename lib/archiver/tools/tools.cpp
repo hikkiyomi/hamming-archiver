@@ -210,7 +210,7 @@ std::vector<uint8_t> Manipulator::Decode(std::vector<uint8_t>& data, bool restor
     if (error_place != 0) {
         if (!extra_bit) {
             std::cout << "Data is damaged and cannot be restored." << std::endl;
-            std::cout << "Do you still want to extract it? [y/n] ";
+            std::cout << "Do you still want to extract it? (could be impossible) [y/n] ";
 
             if (GetUserInput() == 'n') {
                 exit(0);

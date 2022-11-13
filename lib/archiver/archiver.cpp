@@ -330,6 +330,18 @@ void Archiver::Merge(std::filesystem::path& archive_1, std::filesystem::path& ar
         exit(1);
     }
 
+    if (!std::filesystem::exists(archive_1)) {
+        std::cerr << "There is no such archive as " << archive_1.filename() << "." << std::endl;
+
+        exit(1);
+    }
+
+    if (!std::filesystem::exists(archive_2)) {
+        std::cerr << "There is no such archive as " << archive_2.filename() << "." << std::endl;
+
+        exit(1);
+    }
+
     NormalizeArchivePath(archive_path);
 
     std::ofstream output_stream(archive_path, std::ios::binary | std::ios::app);
