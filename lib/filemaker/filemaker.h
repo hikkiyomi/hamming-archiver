@@ -24,5 +24,5 @@ public:
     std::string GetName();
     uint64_t GetSize();
 private:
-    std::filesystem::path file_path;
+    std::filesystem::path file_path_;
 };

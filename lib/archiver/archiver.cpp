@@ -28,16 +28,16 @@ void NormalizeArchivePath(std::filesystem::path& archive_path) {
 }
 
 Archiver::Archiver(const std::filesystem::path& _archive_path, bool _restore) 
-    : archive_path(_archive_path)
-    , manipulator(Manipulator())
-    , restore(_restore)
+    : archive_path_(_archive_path)
+    , manipulator_(Manipulator())
+    , restore_(_restore)
 {
-    NormalizeArchivePath(archive_path);
+    NormalizeArchivePath(archive_path_);
 }
 
 void Archiver::Create() {
-    if (std::filesystem::exists(archive_path)) {
-        std::cout << "Archive " << archive_path.filename() << " already exists." << std::endl;
+    if (std::filesystem::exists(archive_path_)) {
+        std::cout << "Archive " << archive_path_.filename() << " already exists." << std::endl;
         std::cout << "Do you want to replace it? [y/n] ";
 
         if (GetUserInput() == 'n') {
@@ -45,13 +45,13 @@ void Archiver::Create() {
         }
     }
 
-    std::ofstream{archive_path};
+    std::ofstream{archive_path_};
 }
 
 void Archiver::WriteFileInfo(std::ofstream& stream, const HAFInfo& header) {
-    manipulator.LoadData(stream, reinterpret_cast<const char*>(&header.file_name_length), sizeof(header.file_name_length));
-    manipulator.LoadData(stream, static_cast<const char*>(header.file_name.data()), header.file_name_length);
-    manipulator.LoadData(stream, reinterpret_cast<const char*>(&header.file_size), sizeof(header.file_size));
+    manipulator_.LoadData(stream, reinterpret_cast<const char*>(&header.file_name_length), sizeof(header.file_name_length));
+    manipulator_.LoadData(stream, static_cast<const char*>(header.file_name.data()), header.file_name_length);
+    manipulator_.LoadData(stream, reinterpret_cast<const char*>(&header.file_size), sizeof(header.file_size));
 }
 
 bool Archiver::CheckOnAvailability(const std::filesystem::path& path, const std::string& file_name) {
@@ -96,7 +96,7 @@ void Archiver::Append(const std::filesystem::path& file_path) {
         exit(1);
     }
 
-    if (!CheckOnAvailability(archive_path, info_header.file_name)) {
+    if (!CheckOnAvailability(archive_path_, info_header.file_name)) {
         std::cout << "Archive already contains file with name " << info_header.file_name << std::endl;
         std::cout << "Do you want to replace it? [y/n] ";
 
@@ -107,28 +107,28 @@ void Archiver::Append(const std::filesystem::path& file_path) {
         Delete({info_header.file_name});
     }
 
-    std::ofstream stream(archive_path, std::ios::binary | std::ios::app);
+    std::ofstream stream(archive_path_, std::ios::binary | std::ios::app);
 
     WriteFileInfo(stream, info_header);
 
     std::ifstream file_stream(file_path, std::ios::binary);
 
     for (char byte; file_stream.get(byte);) {
-        manipulator.LoadData(stream, static_cast<const char*>(&byte), sizeof(byte));
+        manipulator_.LoadData(stream, static_cast<const char*>(&byte), sizeof(byte));
     }
 }
 
 void Archiver::ReadFileInfo(std::ifstream& stream, HAFInfo& header) {
-    manipulator.UnloadData(stream, reinterpret_cast<char*>(&header.file_name_length), sizeof(header.file_name_length), restore);
+    manipulator_.UnloadData(stream, reinterpret_cast<char*>(&header.file_name_length), sizeof(header.file_name_length), restore_);
 
     char buffer[header.file_name_length + 1];
 
-    manipulator.UnloadData(stream, buffer, header.file_name_length, restore);
+    manipulator_.UnloadData(stream, buffer, header.file_name_length, restore_);
 
     buffer[header.file_name_length] = '\0';
     header.file_name = std::string(buffer);
 
-    manipulator.UnloadData(stream, reinterpret_cast<char*>(&header.file_size), sizeof(header.file_size), restore);
+    manipulator_.UnloadData(stream, reinterpret_cast<char*>(&header.file_size), sizeof(header.file_size), restore_);
 }
 
 std::string MakeName(const std::filesystem::path& path, uint32_t copy_number) {
@@ -149,7 +149,7 @@ void MakeCopy(std::string& file_name) {
 }
 
 void Archiver::Extract(const std::unordered_set<std::string>& files) {
-    std::ifstream input_stream(archive_path, std::ios::binary);
+    std::ifstream input_stream(archive_path_, std::ios::binary);
 
     while (input_stream.peek() != EOF) {
         HAFInfo current_file;
@@ -183,7 +183,7 @@ void Archiver::Extract(const std::unordered_set<std::string>& files) {
         for (size_t i = 0; i < current_file.file_size; ++i) {
             char byte;
 
-            manipulator.UnloadData(input_stream, reinterpret_cast<char*>(&byte), sizeof(byte), restore);
+            manipulator_.UnloadData(input_stream, reinterpret_cast<char*>(&byte), sizeof(byte), restore_);
             output_stream.write(static_cast<const char*>(&byte), sizeof(byte));
         }
     }
@@ -218,9 +218,9 @@ void PrintFileData(const HAFInfo& header) {
 }
 
 void Archiver::ShowData() {
-    std::cout << "Archive " << archive_path << " contains:" << std::endl;
+    std::cout << "Archive " << archive_path_ << " contains:" << std::endl;
 
-    std::ifstream input_stream(archive_path, std::ios::binary);
+    std::ifstream input_stream(archive_path_, std::ios::binary);
     uint32_t file_count = 0;
     uint64_t archive_size = 0;
 
@@ -254,9 +254,9 @@ void Archiver::Delete(const std::unordered_set<std::string>& files) {
         exit(1);
     }
 
-    std::filesystem::path new_archive = std::filesystem::path(archive_path.stem().string() + ".tmp");
+    std::filesystem::path new_archive = std::filesystem::path(archive_path_.stem().string() + ".tmp");
     std::ofstream output_stream(new_archive, std::ios::binary | std::ios::app);
-    std::ifstream input_stream(archive_path, std::ios::binary);
+    std::ifstream input_stream(archive_path_, std::ios::binary);
 
     while (input_stream.peek() != EOF) {
         HAFInfo current_file;
@@ -274,16 +274,16 @@ void Archiver::Delete(const std::unordered_set<std::string>& files) {
         for (size_t bytes_read = 0; bytes_read < current_file.file_size; ++bytes_read) {
             char byte;
 
-            manipulator.UnloadData(input_stream, static_cast<char*>(&byte), sizeof(byte), restore);
-            manipulator.LoadData(output_stream, static_cast<const char*>(&byte), sizeof(byte));
+            manipulator_.UnloadData(input_stream, static_cast<char*>(&byte), sizeof(byte), restore_);
+            manipulator_.LoadData(output_stream, static_cast<const char*>(&byte), sizeof(byte));
         }
     }
 
     input_stream.close();
     output_stream.close();
 
-    std::filesystem::remove(archive_path);
-    std::filesystem::rename(new_archive, archive_path);
+    std::filesystem::remove(archive_path_);
+    std::filesystem::rename(new_archive, archive_path_);
 }
 
 void Archiver::WriteArchive(std::ofstream& output_stream, const std::filesystem::path& path, std::unordered_set<std::string>& merged_files) {
@@ -316,8 +316,8 @@ void Archiver::WriteArchive(std::ofstream& output_stream, const std::filesystem:
         for (size_t bytes_read = 0; bytes_read < appending_file.file_size; ++bytes_read) {
             char byte;
 
-            manipulator.UnloadData(input_stream, static_cast<char*>(&byte), sizeof(byte), restore);
-            manipulator.LoadData(output_stream, static_cast<const char*>(&byte), sizeof(byte));
+            manipulator_.UnloadData(input_stream, static_cast<char*>(&byte), sizeof(byte), restore_);
+            manipulator_.LoadData(output_stream, static_cast<const char*>(&byte), sizeof(byte));
         }
     }
 }
@@ -326,7 +326,7 @@ void Archiver::Merge(std::filesystem::path& archive_1, std::filesystem::path& ar
     NormalizeArchivePath(archive_1);
     NormalizeArchivePath(archive_2);
     
-    if (archive_path.empty()) {
+    if (archive_path_.empty()) {
         std::cerr << "No merge archive provided. Merging was not done." << std::endl;
 
         exit(1);
@@ -344,9 +344,9 @@ void Archiver::Merge(std::filesystem::path& archive_1, std::filesystem::path& ar
         exit(1);
     }
 
-    NormalizeArchivePath(archive_path);
+    NormalizeArchivePath(archive_path_);
 
-    std::ofstream output_stream(archive_path, std::ios::binary | std::ios::app);
+    std::ofstream output_stream(archive_path_, std::ios::binary | std::ios::app);
     std::unordered_set<std::string> merged_files;
 
     WriteArchive(output_stream, archive_1, merged_files);

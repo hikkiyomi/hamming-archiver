@@ -24,12 +24,12 @@ char GetUserInput() {
 }
 
 Manipulator::Manipulator()
-    : block_size(kBitsInBytes)
+    : block_size_(kBitsInBytes)
 {}
 
 void Manipulator::SaveBits(uint8_t byte) {
     for (size_t bit = 0; bit < kBitsInBytes; ++bit) {
-        buffer_in.push_back((byte >> bit) & 1);
+        buffer_in_.push_back((byte >> bit) & 1);
     }
 }
 
@@ -46,9 +46,9 @@ uint8_t MakeByte(const std::vector<uint8_t>& bits) {
 void Manipulator::WriteByte(std::ofstream& stream) {
     std::vector<uint8_t> bits(kBitsInBytes);
 
-    for (size_t i = 0; i < kBitsInBytes && !buffer_out.empty(); ++i) {
-        bits[i] = buffer_out.front();
-        buffer_out.pop_front();
+    for (size_t i = 0; i < kBitsInBytes && !buffer_out_.empty(); ++i) {
+        bits[i] = buffer_out_.front();
+        buffer_out_.pop_front();
     }
 
     uint8_t byte = MakeByte(bits);
@@ -65,17 +65,17 @@ void Manipulator::LoadData(std::ofstream& stream, const char* byte_seq, size_t l
     for (size_t i = 0; i < length; ++i) {
         SaveBits(byte_seq[i]);
 
-        std::vector<uint8_t> data(block_size);
+        std::vector<uint8_t> data(block_size_);
 
-        for (size_t j = 0; j < block_size; ++j) {
-            data[j] = buffer_in.front();
-            buffer_in.pop_front();
+        for (size_t j = 0; j < block_size_; ++j) {
+            data[j] = buffer_in_.front();
+            buffer_in_.pop_front();
         }
 
         std::vector<uint8_t> hamming_code = Encode(data);
 
         for (auto& bit: hamming_code) {
-            buffer_out.push_back(bit);
+            buffer_out_.push_back(bit);
         }
 
         WriteData(stream);

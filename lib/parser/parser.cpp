@@ -24,8 +24,8 @@ void PrintUnknownArgumentInformation(std::string arg);
 Parser::Parser(int argc, char** argv)
     : argc_(argc)
     , argv_(argv)
-    , arguments_mask(0)
-    , restore(true)
+    , arguments_mask_(0)
+    , restore_(true)
 {}
 
 void PrintHelpList() {
@@ -92,7 +92,7 @@ void Parser::Parse() {
         }
 
         if (argv_[i][0] != '-') {
-            files.insert(argv_[i]);
+            files_.insert(argv_[i]);
             ++i;
             
             continue;
@@ -121,25 +121,25 @@ void Parser::Parse() {
                 exit(1);
             }
 
-            archive_path = params[1];
+            archive_path_ = params[1];
 
             continue;
         }
 
         if (strcmp(argv_[i], "-c") == 0 || strcmp(argv_[i], "--create") == 0) {
-            arguments_mask |= kCreateCommandMask;
+            arguments_mask_ |= kCreateCommandMask;
         } else if (strcmp(argv_[i], "-l") == 0 || strcmp(argv_[i], "--list") == 0) {
-            arguments_mask |= kListCommandMask;
+            arguments_mask_ |= kListCommandMask;
         } else if (strcmp(argv_[i], "-x") == 0 || strcmp(argv_[i], "--extract") == 0) {
-            arguments_mask |= kExtractCommandMask;
+            arguments_mask_ |= kExtractCommandMask;
         } else if (strcmp(argv_[i], "-a") == 0 || strcmp(argv_[i], "--append") == 0) {
-            arguments_mask |= kAppendCommandMask;
+            arguments_mask_ |= kAppendCommandMask;
         } else if (strcmp(argv_[i], "-d") == 0 || strcmp(argv_[i], "--delete") == 0) {
-            arguments_mask |= kDeleteCommandMask;
+            arguments_mask_ |= kDeleteCommandMask;
         } else if (strcmp(argv_[i], "-A") == 0 || strcmp(argv_[i], "--concatenate") == 0) {
-            arguments_mask |= kMergeCommandMask;
+            arguments_mask_ |= kMergeCommandMask;
         } else if (strcmp(argv_[i], "--no-restore") == 0) {
-            restore = false;
+            restore_ = false;
         } else {
             PrintUnknownArgumentInformation(argv_[i]);
             
@@ -149,7 +149,7 @@ void Parser::Parse() {
         ++i;
     }
 
-    if (!CheckOnCorrectness(arguments_mask)) {
+    if (!CheckOnCorrectness(arguments_mask_)) {
         std::cerr << "Using less/more than one command is restricted." << std::endl;
         std::cerr << "Try --help for more information." << std::endl;
 
@@ -158,40 +158,40 @@ void Parser::Parse() {
 }
 
 void Parser::Run() {
-    if (archive_path.empty()) {
+    if (archive_path_.empty()) {
         std::cerr << "No archive name was provided." << std::endl;
         
         exit(1);
     }
 
-    Archiver driver(archive_path, restore);
+    Archiver driver(archive_path_, restore_);
 
-    if (arguments_mask == kCreateCommandMask) {
+    if (arguments_mask_ == kCreateCommandMask) {
         driver.Create();
-    } else if (arguments_mask == kListCommandMask) {
+    } else if (arguments_mask_ == kListCommandMask) {
         driver.ShowData();
-    } else if (arguments_mask == kExtractCommandMask) {
-        driver.Extract(files);
-    } else if (arguments_mask == kAppendCommandMask) {
-        if (files.size() > 1) {
+    } else if (arguments_mask_ == kExtractCommandMask) {
+        driver.Extract(files_);
+    } else if (arguments_mask_ == kAppendCommandMask) {
+        if (files_.size() > 1) {
             std::cerr << "Only one file can be appended!" << std::endl;
 
             exit(1);
         }
 
-        driver.Append(*files.begin());
-    } else if (arguments_mask == kDeleteCommandMask) {
-        driver.Delete(files);
-    } else if (arguments_mask == kMergeCommandMask) {
-        if (files.size() > 2) {
+        driver.Append(*files_.begin());
+    } else if (arguments_mask_ == kDeleteCommandMask) {
+        driver.Delete(files_);
+    } else if (arguments_mask_ == kMergeCommandMask) {
+        if (files_.size() > 2) {
             std::cerr << "More than two archives provided!" << std::endl;
 
             exit(1);
         }
 
-        std::filesystem::path archive1 = *files.begin();
-        files.erase(files.begin());
-        std::filesystem::path archive2 = *files.begin();
+        std::filesystem::path archive1 = *files_.begin();
+        files_.erase(files_.begin());
+        std::filesystem::path archive2 = *files_.begin();
 
         driver.Merge(archive1, archive2);
     } else {

@@ -17,9 +17,9 @@ public:
     void Delete(const std::unordered_set<std::string>& files);
     void Merge(std::filesystem::path& archive_1, std::filesystem::path& archive_2);
 private:
-    std::filesystem::path archive_path;
-    Manipulator manipulator;
-    bool restore;
+    std::filesystem::path archive_path_;
+    Manipulator manipulator_;
+    bool restore_;
 
     bool CheckOnAvailability(const std::filesystem::path& archive_path, const std::string& file_name);
     void ReadFileInfo(std::ifstream& stream, HAFInfo& header);

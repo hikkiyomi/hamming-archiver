@@ -21,7 +21,7 @@ HAFInfo File::ExportIntoHAF() {
 }
 
 File::File(const std::filesystem::path& _file_path)
-    : file_path(_file_path)
+    : file_path_(_file_path)
 {}
 
 void File::Show() { // FOR DEBUGGING
@@ -31,13 +31,13 @@ void File::Show() { // FOR DEBUGGING
 }
 
 std::filesystem::path File::GetAbsolutePath() {
-    return std::filesystem::absolute(file_path);
+    return std::filesystem::absolute(file_path_);
 }
 
 std::string File::GetName() {
-    return file_path.filename().string();
+    return file_path_.filename().string();
 }
 
 uint64_t File::GetSize() {
-    return std::filesystem::file_size(file_path);
+    return std::filesystem::file_size(file_path_);
 }

@@ -14,8 +14,8 @@ public:
 private:
     int argc_;
     char** argv_;
-    uint8_t arguments_mask;
-    bool restore;
-    std::unordered_set<std::string> files;
-    std::filesystem::path archive_path;
+    uint8_t arguments_mask_;
+    bool restore_;
+    std::unordered_set<std::string> files_;
+    std::filesystem::path archive_path_;
 };
